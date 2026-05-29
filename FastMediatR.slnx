@@ -8,6 +8,7 @@
     <Project Path="samples/FastMediatR.Sample.Api/FastMediatR.Sample.Api.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/FastMediatR/FastMediatR.csproj" />
     <Project Path="src/FastMediatR.Core/FastMediatR.Core.csproj" />
     <Project Path="src/FastMediatR.Extensions.DI/FastMediatR.Extensions.DI.csproj" />
     <Project Path="src/FastMediatR.Generator/FastMediatR.Generator.csproj" />
