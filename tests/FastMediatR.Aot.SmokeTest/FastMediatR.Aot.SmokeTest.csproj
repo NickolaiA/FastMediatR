@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    FastMediatR.Aot.SmokeTest
+    Console app published with PublishAot=true.
+    Verifies that the FastMediatR library has zero AOT analyzer warnings when its
+    AOT-safe startup path (FastMediatRGeneratedRegistration.Register) is used directly.
+    Added as a CI gate per task breakdown 5.5.
+
+    Usage:
+      dotnet publish -c Release -r linux-x64 /p:PublishAot=true
+      ./bin/Release/net10.0/linux-x64/publish/FastMediatR.Aot.SmokeTest
+      # Exit code 0 = AOT smoke test passed.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <!-- AOT / trim safety — this project is the AOT smoke test itself, so it MUST be AOT-compatible. -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <!-- Publish settings for the CI gate. -->
+    <PublishAot>true</PublishAot>
+    <TrimmerRootAssembly>FastMediatR.Aot.SmokeTest</TrimmerRootAssembly>
+    <RootNamespace>FastMediatR.Aot.SmokeTest</RootNamespace>
+    <!-- Write generator output to disk so it can be inspected. -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
+    <!-- Suppress var-style IDE rule; this is a demo/smoke console app, not library code. -->
+    <NoWarn>$(NoWarn);IDE0008</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FastMediatR.Core\FastMediatR.Core.csproj" />
+    <ProjectReference Include="..\..\src\FastMediatR.Extensions.DI\FastMediatR.Extensions.DI.csproj" />
+    <!-- Source generator: emits FastMediatRGeneratedRegistration for this assembly's handlers. -->
+    <ProjectReference Include="..\..\src\FastMediatR.Generator\FastMediatR.Generator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <!-- Logging abstractions only — NullLoggerFactory/NullLogger<T> needed by LoggingBehavior. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+</Project>

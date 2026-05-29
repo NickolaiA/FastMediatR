@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    FastMediatR.Sample.Api
+    Canonical, copy-pasteable reference for users of the FastMediatR library.
+    Updated at the end of every implementation phase (task breakdown §"Phase Conventions" - gate S).
+    Phase 0: skeleton + /health endpoint.
+    Phase 1: Commands/, Queries/, Notifications/ folders illustrating core abstractions
+             (compile-only; no dispatch wired up yet).
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>FastMediatR.Sample.Api</RootNamespace>
+    <AssemblyName>FastMediatR.Sample.Api</AssemblyName>
+    <UserSecretsId>fastmediatr-sample-api</UserSecretsId>
+    <!-- Sample code is exempt from CS1591 XML doc enforcement -->
+    <!-- IDE0008: minimal-API top-level statements idiomatically use var -->
+    <NoWarn>$(NoWarn);CS1591;IDE0008</NoWarn>
+    <!-- Sample is not packed and not part of AOT smoke test -->
+    <IsPackable>false</IsPackable>
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <!-- Write source-generator output to disk so it is browsable and inspectable. -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FastMediatR.Core\FastMediatR.Core.csproj" />
+    <ProjectReference Include="..\..\src\FastMediatR.Extensions.DI\FastMediatR.Extensions.DI.csproj" />
+    <!-- Phase 6: Optional telemetry package (TracingBehavior + builder extension). -->
+    <ProjectReference Include="..\..\src\FastMediatR.Telemetry\FastMediatR.Telemetry.csproj" />
+    <!-- Source generator: Analyzer-only reference; does not add a runtime assembly dependency. -->
+    <ProjectReference Include="..\..\src\FastMediatR.Generator\FastMediatR.Generator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+    <!-- Phase 6: OpenTelemetry SDK wiring and console exporter for local development. -->
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" />
+  </ItemGroup>
+
+</Project>

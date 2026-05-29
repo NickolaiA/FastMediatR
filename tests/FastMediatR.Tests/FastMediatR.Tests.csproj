@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    FastMediatR.Tests
+    Unit tests for FastMediatR.Core and FastMediatR.Extensions.DI.
+    Phase 1: covers the public abstractions in FastMediatR.Core (Unit, IRequest, etc.).
+  -->
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>FastMediatR.Tests</RootNamespace>
+    <!-- Test code is exempt from CS1591 XML doc enforcement -->
+    <!-- CA1707: tests follow the Method_Under_Test_Scenario naming convention -->
+    <!-- CA1062: tests deliberately exercise null/edge cases without defensive guards -->
+    <!-- IDE0008: var preference is enforced in library code, relaxed in tests -->
+    <NoWarn>$(NoWarn);CS1591;CA1707;CA1062;IDE0008</NoWarn>
+    <!-- Tests do not need to be AOT/trim safe -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="NSubstitute" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" />
+    <PackageReference Include="coverlet.collector" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FastMediatR.Core\FastMediatR.Core.csproj" />
+    <ProjectReference Include="..\..\src\FastMediatR.Extensions.DI\FastMediatR.Extensions.DI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+</Project>

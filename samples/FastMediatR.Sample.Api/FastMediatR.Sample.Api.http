@@ -1,0 +1,123 @@
+### FastMediatR Sample API — HTTP test file
+### Run the API first:  dotnet run --project samples/FastMediatR.Sample.Api
+### (or use the start-web-api.cmd helper in the repo root)
+###
+### Default URL (http profile):  http://localhost:5100
+### See ../../docs/260524_1300-fastmediatr-usage-guide.md for what each behavior does.
+###
+### VS Code REST Client extension:  https://marketplace.visualstudio.com/items?itemName=humao.rest-client
+### JetBrains HTTP Client:          supported natively in Rider / ReSharper
+
+@baseUrl = http://localhost:5100
+
+### Reusable ids ──────────────────────────────────────────────────────────────
+# A non-empty user id (any non-empty Guid resolves to a sample user on GET).
+@userId = 00000000-0000-0000-0000-000000000001
+# The empty Guid is treated as "not found" by GetUserByIdQueryHandler.
+@emptyUserId = 00000000-0000-0000-0000-000000000000
+
+# ──────────────────────────────────────────────────────────────────────────────
+# HEALTH
+# ──────────────────────────────────────────────────────────────────────────────
+
+### Health check — liveness probe
+# Expected: 200 OK  { "status": "ok", "phase": "Phase 6" }
+GET {{baseUrl}}/health
+Accept: application/json
+
+# ──────────────────────────────────────────────────────────────────────────────
+# COMMANDS
+# ──────────────────────────────────────────────────────────────────────────────
+
+### Create user — CreateUserCommand : IRequest<Guid>
+# Flow: LoggingBehavior → PerformanceBehavior → ValidationBehavior → NoOpSampleBehavior → handler
+# Expected: 201 Created  { "id": "<guid>" }  with Location: /users/<guid>
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "displayName": "Alice"
+}
+
+###
+
+### Create user — VALIDATION FAILURE (invalid email)
+# ValidationBehavior runs CreateUserCommandValidator and throws ValidationException.
+# Expected: 400 Bad Request  problem+json with errors["Email"]
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "email": "not-an-email",
+  "displayName": "Bob"
+}
+
+###
+
+### Create user — VALIDATION FAILURE (empty display name)
+# Expected: 400 Bad Request  problem+json with errors["DisplayName"]
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "email": "carol@example.com",
+  "displayName": ""
+}
+
+###
+
+### Create user — VALIDATION FAILURE (multiple errors)
+# Expected: 400 Bad Request  problem+json with errors for both Email and DisplayName
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "email": "",
+  "displayName": ""
+}
+
+###
+
+### Deactivate user — DeactivateUserCommand : IRequest (void / Unit)
+# Handler uses [HandlerLifetime(Transient)] to demonstrate per-handler lifetime override.
+# Expected: 204 No Content
+DELETE {{baseUrl}}/users/{{userId}}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# QUERIES
+# ──────────────────────────────────────────────────────────────────────────────
+
+### Get user by id — GetUserByIdQuery : IRequest<UserDto?>  (found)
+# Any non-empty Guid resolves to a sample user.
+# Expected: 200 OK  { "id": "<guid>", "email": "sample@example.com", "displayName": "Sample User" }
+GET {{baseUrl}}/users/{{userId}}
+Accept: application/json
+
+###
+
+### Get user by id — NOT FOUND (empty Guid → handler returns null)
+# Expected: 404 Not Found
+GET {{baseUrl}}/users/{{emptyUserId}}
+Accept: application/json
+
+# ──────────────────────────────────────────────────────────────────────────────
+# NOTIFICATIONS
+# ──────────────────────────────────────────────────────────────────────────────
+
+### Publish user-created notification — UserCreatedNotification (parallel fan-out)
+# Uses the default TaskWhenAllPublisher; all INotificationHandler<UserCreatedNotification>
+# subscribers run concurrently. The `email` value is passed as a query-string parameter.
+# Expected: 202 Accepted
+POST {{baseUrl}}/users/{{userId}}/events/created?email=alice@example.com
+
+# ──────────────────────────────────────────────────────────────────────────────
+# TELEMETRY DEMO
+# ──────────────────────────────────────────────────────────────────────────────
+
+### Telemetry demo — Send (traced) + Publish (untraced)
+# Dispatches a GetUserByIdQuery (emits a "GetUserByIdQuery" span via TracingBehavior)
+# and publishes a UserCreatedNotification. Spans are written to the console exporter.
+# Expected: 200 OK  { "span": "GetUserByIdQuery", "found": false, "notificationPublished": true }
+GET {{baseUrl}}/telemetry/demo
+Accept: application/json

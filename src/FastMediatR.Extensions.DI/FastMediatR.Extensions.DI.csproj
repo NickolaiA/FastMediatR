@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    FastMediatR.Extensions.DI
+    Microsoft.Extensions.DependencyInjection integration for FastMediatR.
+    Provides AddFastMediatR<TMarker>(services, configure) and assembly scanning.
+    Bundled into FastMediatR.nupkg via the wrapper project — not packed itself.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>FastMediatR.Extensions.DI</RootNamespace>
+    <AssemblyName>FastMediatR.Extensions.DI</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FastMediatR.Core\FastMediatR.Core.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Expose internals (AssemblyScanner, GeneratedRegistrationLocator) to the unit-test project. -->
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>FastMediatR.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+</Project>

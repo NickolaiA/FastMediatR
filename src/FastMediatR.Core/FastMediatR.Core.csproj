@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    FastMediatR.Core
+    Public interface surface: IRequest<T>, IRequestHandler<,>, INotification,
+    INotificationHandler<>, IPipelineBehavior<,>, Unit, ISender, IPublisher,
+    IMediator, RequestPreProcessorBehavior, RequestPostProcessorBehavior,
+    INotificationPublisher implementations.
+
+    Bundled into FastMediatR.nupkg via the wrapper project — not packed itself.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>FastMediatR</RootNamespace>
+    <AssemblyName>FastMediatR.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
+</Project>

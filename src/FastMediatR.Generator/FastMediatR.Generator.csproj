@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    FastMediatR.Generator
+    Roslyn IIncrementalGenerator that scans the consumer's compilation for
+    IRequestHandler<,> and INotificationHandler<> implementations and emits:
+      * FastMediatR.Generated.FastMediatRDispatcher  (IMediator implementation)
+      * FastMediatR.Generated.FastMediatRGeneratedRegistration  (DI bootstrap)
+
+    Target framework MUST be netstandard2.0 (Roslyn analyzer host requirement).
+    No reflection in emitted code — pure switch dispatch.
+
+    Bundled into FastMediatR.nupkg via the wrapper project; not packed itself.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>FastMediatR.Generator</RootNamespace>
+    <AssemblyName>FastMediatR.Generator</AssemblyName>
+
+    <IsRoslynComponent>true</IsRoslynComponent>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+
+    <!-- Analyzer hosts run inside the compiler / IDE; AOT and trim flags do not apply. -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+
+    <!--
+      Roslyn analyzer host targets netstandard2.0 and only provides .NET 8-era BCL APIs.
+      Suppress generator-specific noise:
+        CS1591 — XML docs already present on every public symbol; private helpers omit them.
+        CA1812 — analyzer/generator types are loaded by Roslyn via reflection, not by us.
+        RS1041 — multi-targeting not required for an analyzer-only project.
+    -->
+    <NoWarn>$(NoWarn);RS1041</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!--
+    Polyfill records / init / nullable attributes for netstandard2.0 so the generator can
+    use modern C# syntax (record struct, init-only setters, etc.) without a runtime dependency.
+    The explicit Compile item was removed — the SDK auto-includes all .cs files; the polyfill
+    file is picked up by globbing like every other source file.
+  -->
+
+</Project>

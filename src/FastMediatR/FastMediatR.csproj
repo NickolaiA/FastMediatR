@@ -1,0 +1,82 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    FastMediatR (meta / wrapper package)
+    Produces the primary FastMediatR.nupkg by bundling three project outputs into ONE package:
+      * FastMediatR.Core.dll         -> lib/net10.0          (abstractions + behaviors)
+      * FastMediatR.Extensions.DI.dll-> lib/net10.0          (AddFastMediatR<TMarker>())
+      * FastMediatR.Generator.dll    -> analyzers/dotnet/cs  (source generator)
+
+    The three referenced projects are PrivateAssets="all" so NuGet does NOT emit package
+    dependencies on them (they have no standalone packages). Their runtime DLLs + XML docs are
+    injected into the package via the _BundleProjectReferences target; the generator is injected
+    into the analyzers folder via _AddGeneratorToPackage.
+
+    External package dependencies (Microsoft.Extensions.*, FluentValidation) are re-declared here
+    so consumers of FastMediatR receive them transitively.
+
+    This project intentionally contains no source code of its own.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>FastMediatR</RootNamespace>
+    <AssemblyName>FastMediatR</AssemblyName>
+
+    <IsPackable>true</IsPackable>
+    <PackageId>FastMediatR</PackageId>
+    <Title>FastMediatR</Title>
+    <Description>High-performance, AOT-friendly, source-generated in-process mediator for .NET — a near drop-in replacement for MediatR. Bundles the core abstractions, the Microsoft.Extensions.DependencyInjection integration (AddFastMediatR), and the Roslyn source generator that emits zero-reflection dispatch.</Description>
+    <PackageTags>mediator;mediatr;cqrs;source-generator;aot;trimming;dependency-injection;messaging;pipeline</PackageTags>
+
+    <!-- This assembly has no public API of its own; skip the empty XML doc file. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+
+    <!-- Bundle the referenced project outputs into the package's build output (lib/). -->
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);_BundleProjectReferences</TargetsForTfmSpecificBuildOutput>
+    <!-- The wrapper produces an (empty) FastMediatR.dll; keep it so the package has a primary assembly. -->
+    <SuppressDependenciesWhenPacking>false</SuppressDependenciesWhenPacking>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Bundled into THIS package (no standalone packages). PrivateAssets=all suppresses the
+         broken FastMediatR.Core / FastMediatR.Extensions.DI package dependencies. -->
+    <ProjectReference Include="..\FastMediatR.Core\FastMediatR.Core.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\FastMediatR.Extensions.DI\FastMediatR.Extensions.DI.csproj" PrivateAssets="all" />
+    <!-- Generator: referenced as an analyzer (not a runtime assembly); packed into analyzers/dotnet/cs. -->
+    <ProjectReference Include="..\FastMediatR.Generator\FastMediatR.Generator.csproj"
+                      PrivateAssets="all"
+                      ReferenceOutputAssembly="false"
+                      OutputItemType="Analyzer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Re-declared so they flow to consumers as package dependencies (the bundled DLLs above
+         need them at runtime, but PrivateAssets=all on the project refs hides their transitive deps). -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
+  <!-- Inject the runtime DLLs + XML docs of the bundled projects into lib/<tfm>/. -->
+  <Target Name="_BundleProjectReferences" DependsOnTargets="ResolveReferences">
+    <ItemGroup>
+      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths)"
+                            Condition="('%(Extension)' == '.dll' OR '%(Extension)' == '.xml') AND $([System.String]::Copy('%(Filename)').StartsWith('FastMediatR'))" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Inject the source generator DLL into analyzers/dotnet/cs so it runs in consumer compilations. -->
+  <Target Name="_AddGeneratorToPackage" BeforeTargets="_GetPackageFiles" DependsOnTargets="ResolveReferences">
+    <ItemGroup>
+      <None Include="@(Analyzer)"
+            Condition="$([System.String]::Copy('%(Filename)').StartsWith('FastMediatR.Generator'))"
+            Pack="true"
+            PackagePath="analyzers/dotnet/cs"
+            Visible="false" />
+    </ItemGroup>
+  </Target>
+
+</Project>

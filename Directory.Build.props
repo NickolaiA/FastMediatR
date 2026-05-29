@@ -1,0 +1,62 @@
+<Project>
+
+  <!--
+    Repository-wide MSBuild defaults.
+    Sourced from design §17 and DotNet.md §1, §18.
+    Applies to every project unless explicitly overridden by a leaf csproj.
+  -->
+
+  <PropertyGroup>
+    <!-- Platform / language baseline (DotNet.md §1) -->
+    <TargetFramework Condition="'$(TargetFramework)' == '' AND '$(TargetFrameworks)' == ''">net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Quality gates -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <AnalysisMode>AllEnabledByDefault</AnalysisMode>
+
+    <!-- Documentation (DotNet.md §18) -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591: Missing XML comment - we want it enforced, but only on library projects (see leaf overrides) -->
+
+    <!-- AOT / trim safety (design §1, §17.2) -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsTrimmable>true</IsTrimmable>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+
+    <!-- Deterministic / reproducible build (design §14.1) -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- Default to non-packable; only the wrapper + Telemetry projects opt in -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- Repository metadata for any project that does set IsPackable=true (design §14.1) -->
+  <PropertyGroup>
+    <!-- Single source of truth for the NuGet package version (FastMediatR + FastMediatR.Telemetry). -->
+    <Version>0.1.0</Version>
+    <Authors>FastMediatR contributors</Authors>
+    <Company>FastMediatR</Company>
+    <Product>FastMediatR</Product>
+    <Copyright>Copyright © FastMediatR contributors</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/NickolaiA/FastMediatR</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/NickolaiA/FastMediatR</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EnablePackageValidation>true</EnablePackageValidation>
+  </PropertyGroup>
+
+</Project>

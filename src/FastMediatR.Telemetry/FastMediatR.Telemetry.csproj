@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    FastMediatR.Telemetry
+    Optional OpenTelemetry ActivitySource tracing for FastMediatR.
+    Emits request-scoped spans for every Send operation dispatched through the pipeline.
+    Ships as a separate NuGet package — design §11.
+    Phase 6: initial implementation.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>FastMediatR.Telemetry</RootNamespace>
+    <AssemblyName>FastMediatR.Telemetry</AssemblyName>
+    <IsPackable>true</IsPackable>
+    <PackageId>FastMediatR.Telemetry</PackageId>
+    <Title>FastMediatR Telemetry</Title>
+    <Description>Optional OpenTelemetry ActivitySource tracing for FastMediatR. Emits request-scoped spans for every Send operation dispatched through the pipeline. References the OpenTelemetry SDK core package (no exporter) to provide the AddFastMediatRInstrumentation() builder extension.</Description>
+    <PackageTags>fastmediatr;mediator;opentelemetry;tracing;observability;activitysource</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+        <!-- OpenTelemetry SDK core package (no exporter) — required for TracerProviderBuilderExtensions.AddSource()
+          used by AddFastMediatRInstrumentation(). TracingBehavior itself uses only BCL System.Diagnostics types. -->
+    <PackageReference Include="OpenTelemetry" />
+    <ProjectReference Include="..\FastMediatR.Core\FastMediatR.Core.csproj" />
+    <!-- DI abstractions for AddFastMediatRTelemetry registration extension. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Expose internals (FastMediatRActivitySource) to the test project. -->
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>FastMediatR.Telemetry.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+</Project>

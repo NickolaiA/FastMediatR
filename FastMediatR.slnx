@@ -1,0 +1,24 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/samples/">
+    <Project Path="samples/FastMediatR.Sample.Api/FastMediatR.Sample.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/FastMediatR.Core/FastMediatR.Core.csproj" />
+    <Project Path="src/FastMediatR.Extensions.DI/FastMediatR.Extensions.DI.csproj" />
+    <Project Path="src/FastMediatR.Generator/FastMediatR.Generator.csproj" />
+    <Project Path="src/FastMediatR.Telemetry/FastMediatR.Telemetry.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FastMediatR.Aot.SmokeTest/FastMediatR.Aot.SmokeTest.csproj" />
+    <Project Path="tests/FastMediatR.Architecture.Tests/FastMediatR.Architecture.Tests.csproj" />
+    <Project Path="tests/FastMediatR.Generator.Tests/FastMediatR.Generator.Tests.csproj" />
+    <Project Path="tests/FastMediatR.Integration.Tests/FastMediatR.Integration.Tests.csproj" />
+    <Project Path="tests/FastMediatR.Telemetry.Tests/FastMediatR.Telemetry.Tests.csproj" />
+    <Project Path="tests/FastMediatR.Tests/FastMediatR.Tests.csproj" />
+  </Folder>
+</Solution>

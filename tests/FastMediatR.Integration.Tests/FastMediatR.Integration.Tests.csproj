@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    FastMediatR.Integration.Tests
+    End-to-end integration tests that boot the FastMediatR.Sample.Api via
+    WebApplicationFactory<Program> and exercise every endpoint through HTTP, verifying
+    the full pipeline (behaviours, validation, notification fan-out).
+    Also contains MigrationCompatibilityTests, which prove that a FastMediatR-wired
+    service collection behaves identically to the MediatR API shape.
+    Phase 5: 5.1 (host) + 5.2 (E2E) + 5.3 (migration compat).
+  -->
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>FastMediatR.Integration.Tests</RootNamespace>
+    <!-- Test code is exempt from XML-doc and style enforcements that apply to library code. -->
+    <NoWarn>$(NoWarn);CS1591;CA1707;CA1062;IDE0008</NoWarn>
+    <!-- Tests must not be AOT/trim safe - they boot the full ASP.NET Core host. -->
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <!-- Write generator output to disk for inspection. -->
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>$(BaseIntermediateOutputPath)Generated</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="coverlet.collector" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FastMediatR.Core\FastMediatR.Core.csproj" />
+    <ProjectReference Include="..\..\src\FastMediatR.Extensions.DI\FastMediatR.Extensions.DI.csproj" />
+    <!-- The sample API is the System Under Test for WebApplicationFactory-based tests. -->
+    <ProjectReference Include="..\..\samples\FastMediatR.Sample.Api\FastMediatR.Sample.Api.csproj" />
+    <!-- Generator runs on this project so local test handlers get their own dispatcher. -->
+    <ProjectReference Include="..\..\src\FastMediatR.Generator\FastMediatR.Generator.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>
