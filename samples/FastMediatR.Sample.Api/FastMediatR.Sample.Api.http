@@ -5,6 +5,10 @@
 ### Default URL (http profile):  http://localhost:5100
 ### See ../../docs/260524_1300-fastmediatr-usage-guide.md for what each behavior does.
 ###
+### NOTE: the invalid POST /users demos deliberately throw ValidationException, so expect
+### ERROR stack traces in the server console — the 400 problem+json response is the correct
+### outcome of those requests, not a pipeline bug.
+###
 ### VS Code REST Client extension:  https://marketplace.visualstudio.com/items?itemName=humao.rest-client
 ### JetBrains HTTP Client:          supported natively in Rider / ReSharper
 
@@ -83,6 +87,34 @@ Content-Type: application/json
 # Handler uses [HandlerLifetime(Transient)] to demonstrate per-handler lifetime override.
 # Expected: 204 No Content
 DELETE {{baseUrl}}/users/{{userId}}
+
+###
+
+### Process payment — APPROVED (ProcessPaymentCommand : IRequest<ProcessPaymentResult>)
+# Amount within the credit limit; handler returns an approved result.
+# Expected: 200 OK  { "approved": true, "reason": "Payment approved." }
+POST {{baseUrl}}/payments
+Content-Type: application/json
+
+{
+  "orderId": "00000000-0000-0000-0000-000000000001",
+  "amount": 250.00
+}
+
+###
+
+### Process payment — DECLINED (exception-handling pipeline)
+# Amount exceeds the credit limit; the handler throws PaymentDeclinedException.
+# RequestExceptionProcessorBehavior routes it to PaymentDeclinedExceptionHandler, which
+# converts it to a graceful result; PaymentDeclinedExceptionAction logs the decline.
+# Expected: 200 OK  { "approved": false, "reason": "Amount ... exceeds the credit limit ..." }
+POST {{baseUrl}}/payments
+Content-Type: application/json
+
+{
+  "orderId": "00000000-0000-0000-0000-000000000002",
+  "amount": 50000.00
+}
 
 # ──────────────────────────────────────────────────────────────────────────────
 # QUERIES

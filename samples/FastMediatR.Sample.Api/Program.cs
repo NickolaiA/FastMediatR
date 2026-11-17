@@ -44,6 +44,13 @@ builder.Services.AddOpenTelemetry()
 // Pre/post processor behaviors are registered automatically by AddFastMediatR.
 #pragma warning disable IL2026 // Sample is not AOT-compiled (IsAotCompatible=false)
 builder.Services.AddFastMediatR<Program>(cfg =>
+{
+    // The decline demo suppresses PaymentDeclinedException via a handler AND logs it via an exception
+    // action — the action only runs for handled exceptions under ApplyForAllExceptions (the default
+    // ApplyForUnhandledExceptions would skip it, since the handler suppresses the exception first).
+    cfg.RequestExceptionActionProcessorStrategy =
+        RequestExceptionActionProcessorStrategy.ApplyForAllExceptions;
+
     cfg.RegisterHandlersFromAssemblyContaining<Program>()
        // Outermost: logs every request entry/exit/failure.
        .AddOpenBehavior(typeof(LoggingBehavior<,>))
@@ -52,7 +59,8 @@ builder.Services.AddFastMediatR<Program>(cfg =>
        // Innermost (before handler): validates input via FluentValidation.
        .AddOpenBehavior(typeof(ValidationBehavior<,>))
        // Example custom no-op behavior to show extensibility.
-       .AddOpenBehavior(typeof(NoOpSampleBehavior<,>)));
+       .AddOpenBehavior(typeof(NoOpSampleBehavior<,>));
+});
 #pragma warning restore IL2026
 
 var app = builder.Build();
@@ -124,6 +132,16 @@ app.MapDelete("/users/{id:guid}", async (Guid id, IMediator mediator, Cancellati
 {
     await mediator.Send(new DeactivateUserCommand(id), ct).ConfigureAwait(false);
     return Results.NoContent();
+});
+
+// POST /payments  →  ProcessPaymentCommand  →  ProcessPaymentResult
+// Demonstrates the exception-handling pipeline: amounts over the credit limit make the handler throw
+// PaymentDeclinedException, which PaymentDeclinedExceptionHandler converts into a graceful
+// "declined" result (HTTP 200) while PaymentDeclinedExceptionAction logs the decline as a side-effect.
+app.MapPost("/payments", async (ProcessPaymentCommand command, IMediator mediator, CancellationToken ct) =>
+{
+    var result = await mediator.Send(command, ct).ConfigureAwait(false);
+    return Results.Ok(result);
 });
 
 // ── Queries ─────────────────────────────────────────────────────────────────

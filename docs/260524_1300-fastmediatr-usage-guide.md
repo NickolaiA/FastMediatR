@@ -13,10 +13,11 @@ This guide is the canonical end-user documentation for FastMediatR. It is update
 
 <!-- Newest first. One entry per phase. -->
 
+- **2026-05-30 — Exception handling pipeline shipped.** New `IRequestExceptionHandler<,,>`, `IRequestExceptionAction<,>`, and `RequestExceptionHandlerState<TResponse>` abstractions in `FastMediatR.Core`, plus two auto-registered behaviors (`RequestExceptionProcessorBehavior`, `RequestExceptionActionProcessorBehavior`) and the `FastMediatRConfig.RequestExceptionActionProcessorStrategy` toggle. New §8 Exception Handling Pipeline added; subsequent sections renumbered. Sample API gains the `POST /payments` use case.
 - **2026-05-29 — Hardening from security & performance review.** `TaskWhenAllPublisher` now propagates `OperationCanceledException` correctly when handlers are cancelled (previously threw `NullReferenceException`). `AddOpenBehavior` now validates that the supplied type implements `IPipelineBehavior<,>`. The reflection-based assembly scanner tolerates `ReflectionTypeLoadException` (partially loadable assemblies). The generated dispatcher pipeline now short-circuits to the handler with zero closure allocations when no behaviors are registered and avoids a redundant `.ToArray()` copy otherwise. `TracingBehavior` documents redaction guidance for exception details on spans. See [260529_1200-security-performance-review.md](260529_1200-security-performance-review.md).
-- **2026-05-25 — Phase 4 — Built-in pipeline behaviors shipped.** `ValidationBehavior`, `LoggingBehavior`, `PerformanceBehavior`, `RequestPreProcessorBehavior`, `RequestPostProcessorBehavior`, `TaskWhenAllPublisher`, `SequentialAwaitPublisher`, and `NotificationPublisherStrategy` are all live. `FastMediatROptions` moved to `FastMediatR.Core` (namespace `FastMediatR`). Sections §6 Pipeline Behaviors, §7 Pre- and Post-Processors, and §8 Notification Publishing Strategies filled in.
-- **2026-05-25 — Phase 3 — DI Extensions shipped.** `AddFastMediatR<TMarker>()` entry point, assembly scanning, `[HandlerLifetime]` override, multi-assembly registration, open-behavior registration, and `FastMediatROptions` binding are all live. Sections §2 Installation, §3 Quick start (final), §5 Dependency injection, and §10 Configuration & options filled in.
-- **2026-05-24 — Phase 2 — Source generator shipped.** The Roslyn `IIncrementalGenerator` now emits `FastMediatRDispatcher` (zero-reflection switch dispatch) and `FastMediatRGeneratedRegistration` (DI wiring) for any consumer assembly. FM001 / FM002 / FM003 diagnostics are live. Sample API wired end-to-end: four dispatch endpoints, generator referenced as `OutputItemType="Analyzer"`. Section §9 filled in.
+- **2026-05-25 — Phase 4 — Built-in pipeline behaviors shipped.** `ValidationBehavior`, `LoggingBehavior`, `PerformanceBehavior`, `RequestPreProcessorBehavior`, `RequestPostProcessorBehavior`, `TaskWhenAllPublisher`, `SequentialAwaitPublisher`, and `NotificationPublisherStrategy` are all live. `FastMediatROptions` moved to `FastMediatR.Core` (namespace `FastMediatR`). Sections §6 Pipeline Behaviors, §7 Pre- and Post-Processors, and §9 Notification Publishing Strategies filled in.
+- **2026-05-25 — Phase 3 — DI Extensions shipped.** `AddFastMediatR<TMarker>()` entry point, assembly scanning, `[HandlerLifetime]` override, multi-assembly registration, open-behavior registration, and `FastMediatROptions` binding are all live. Sections §2 Installation, §3 Quick start (final), §5 Dependency injection, and §11 Configuration & options filled in.
+- **2026-05-24 — Phase 2 — Source generator shipped.** The Roslyn `IIncrementalGenerator` now emits `FastMediatRDispatcher` (zero-reflection switch dispatch) and `FastMediatRGeneratedRegistration` (DI wiring) for any consumer assembly. FM001 / FM002 / FM003 diagnostics are live. Sample API wired end-to-end: four dispatch endpoints, generator referenced as `OutputItemType="Analyzer"`. Section §10 filled in.
 - **2026-05-24 — Phase 1 — Core abstractions landed.** Filled in §1 Introduction & goals, the §3 Quick start stub, and §4 Core concepts with code copied from the sample API. No dispatch is wired yet — the types compile and can be referenced; full execution lands in Phase 3.
 
 ---
@@ -27,10 +28,10 @@ FastMediatR is a high-performance, AOT-friendly, MIT-licensed in-process mediato
 
 **Goals**
 
-- **API-compatible with MediatR for the 95 % case** — rename `using MediatR;` to `using FastMediatR;` and swap `AddMediatR(...)` for `AddFastMediatR<TMarker>(...)` (full migration table in §13).
-- **Faster `Send` / `Publish` than MediatR with materially lower allocations** — see §15 for measured numbers.
-- **Native AOT and trimming friendly out of the box** — the library ships `IsAotCompatible=true` and `IsTrimmable=true`; only one reflection touchpoint, guarded by `[DynamicDependency]` (see §12).
-- **Build-time validation of handler wiring** — the source generator emits errors `FM001` (no handler) and `FM002` (duplicate handler) before you run the app (see §9).
+- **API-compatible with MediatR for the 95 % case** — rename `using MediatR;` to `using FastMediatR;` and swap `AddMediatR(...)` for `AddFastMediatR<TMarker>(...)` (full migration table in §14).
+- **Faster `Send` / `Publish` than MediatR with materially lower allocations** — see §16 for measured numbers.
+- **Native AOT and trimming friendly out of the box** — the library ships `IsAotCompatible=true` and `IsTrimmable=true`; only one reflection touchpoint, guarded by `[DynamicDependency]` (see §13).
+- **Build-time validation of handler wiring** — the source generator emits errors `FM001` (no handler) and `FM002` (duplicate handler) before you run the app (see §10).
 
 **Non-goals**
 
@@ -236,7 +237,7 @@ In order:
    - `IRequestPreProcessor<TRequest>` — concrete type via `TryAdd`; closed `IRequestPreProcessor<TRequest>` interface via `Add` (allows `IEnumerable<>` resolution of all processors in order).
    - `IRequestPostProcessor<TRequest, TResponse>` — same double-registration pattern as pre-processors.
 3. **Open behaviors** — each `AddOpenBehavior` call registers the type as `IPipelineBehavior<,>` using `Add` (preserving declaration order).
-4. **Options** — binds `FastMediatROptions` from the `"FastMediatR"` configuration section (see §10).
+4. **Options** — binds `FastMediatROptions` from the `"FastMediatR"` configuration section (see §11).
 
 ### `[HandlerLifetime]` per-handler lifetime override
 
@@ -456,7 +457,113 @@ LoggingBehavior         (outermost)
 
 ---
 
-## 8. Notification Publishing Strategies
+## 8. Exception Handling Pipeline
+
+The exception-handling pipeline lets you apply **type-routed error policy** as a cross-cutting concern — translate domain exceptions into fallback responses, or run side-effects (logging, metrics) when a request fails — without wrapping every handler in `try`/`catch`. It mirrors MediatR's `IRequestExceptionHandler` / `IRequestExceptionAction` model.
+
+> **AOT note.** The exception behaviors live in `FastMediatR.Extensions.DI` and resolve handlers by walking the runtime exception's type hierarchy, so they use reflection internally. They are wired up only through `AddFastMediatR`, which is already the reflection-based opt-in path (annotated `RequiresUnreferencedCode` / `RequiresDynamicCode`). Apps that need a fully reflection-free startup and do not use this feature are unaffected — the abstractions in `FastMediatR.Core` stay AOT-clean. Conversely, on the pure source-generated path (`FastMediatRGeneratedRegistration.Register(services)`) the exception behaviors are **not** registered and any `IRequestExceptionHandler`/`IRequestExceptionAction` implementations are **silently ignored** — no warning or diagnostic is emitted. The feature currently requires `AddFastMediatR`; generator-based registration for exception handlers/actions is tracked as a future optimization in the feature-gap roadmap (item #10).
+
+### `IRequestExceptionHandler<TRequest, TResponse, TException>` — recover with a fallback
+
+An exception handler can **suppress** an exception and supply a fallback response by calling `state.SetHandled(...)`:
+
+```csharp
+using FastMediatR;
+
+public sealed class PaymentDeclinedExceptionHandler
+    : IRequestExceptionHandler<ProcessPaymentCommand, ProcessPaymentResult, PaymentDeclinedException>
+{
+    public Task Handle(
+        ProcessPaymentCommand request,
+        PaymentDeclinedException exception,
+        RequestExceptionHandlerState<ProcessPaymentResult> state,
+        CancellationToken cancellationToken)
+    {
+        // Translate the domain exception into a graceful, non-faulted result.
+        state.SetHandled(new ProcessPaymentResult(false, exception.Message));
+        return Task.CompletedTask;
+    }
+}
+```
+
+When a handler calls `SetHandled`, the pipeline returns `state.Response` instead of rethrowing. If no handler suppresses the exception, the original exception is rethrown with its stack trace preserved.
+
+### `IRequestExceptionAction<TRequest, TException>` — observe without suppressing
+
+An exception action is a **side-effect only** — it runs when a request fails but cannot suppress the exception:
+
+```csharp
+public sealed class PaymentDeclinedExceptionAction(ILogger<PaymentDeclinedExceptionAction> logger)
+    : IRequestExceptionAction<ProcessPaymentCommand, PaymentDeclinedException>
+{
+    public Task Execute(
+        ProcessPaymentCommand request,
+        PaymentDeclinedException exception,
+        CancellationToken cancellationToken)
+    {
+        logger.LogWarning("Payment declined for order {OrderId}: {Reason}", request.OrderId, exception.Message);
+        return Task.CompletedTask; // the original exception still propagates
+    }
+}
+```
+
+### Exception-type matching
+
+Handlers and actions are matched by walking the thrown exception's type hierarchy, **most-derived first**. A handler registered for a base exception type therefore also handles derived exceptions. For handlers, the **first** one to call `SetHandled` wins and stops the search; for actions, **all** matching actions across the hierarchy run.
+
+Handlers registered for the *same* exception type run in DI registration order. That order follows the assembly scan (marker assembly first, then `RegisterHandlersFromAssembly` additions) and the `Assembly.GetTypes()` enumeration within each assembly — which the CLR does **not** specify across assemblies. Within one assembly the order is practically stable; do not depend on the relative order of handlers declared in *different* assemblies.
+
+### Auto-registration
+
+`AddFastMediatR<TMarker>()` scans all registered assemblies for concrete implementations of `IRequestExceptionHandler<,,>` and `IRequestExceptionAction<,>` and registers them automatically, along with the two wrapping behaviors. No extra call is required.
+
+### Strategy: when do actions run?
+
+`FastMediatRConfig.RequestExceptionActionProcessorStrategy` controls when exception **actions** run relative to exception **handlers**:
+
+| Strategy | Behavior |
+|---|---|
+| `ApplyForUnhandledExceptions` (default) | Actions run **only** when no handler suppresses the exception (the action behavior sits *outside* the handler behavior). |
+| `ApplyForAllExceptions` | Actions **always** run when an exception is thrown, even if a handler later suppresses it (the action behavior sits *inside* the handler behavior). |
+
+```csharp
+builder.Services.AddFastMediatR<Program>(cfg =>
+    cfg.RequestExceptionActionProcessorStrategy =
+        RequestExceptionActionProcessorStrategy.ApplyForAllExceptions);
+```
+
+When `AddFastMediatR` is called more than once on the same service collection (for example an app and a shared library each registering their own marker), the **first** call's strategy wins: the built-in exception behaviors are registered idempotently, so a later call cannot re-nest them. Choose the strategy in the application's composition root. The same first-call-wins rule applies to `DefaultHandlerLifetime`: each assembly is scanned once, by the first call that reaches it — that call's lifetime applies, and a later call's value only affects assemblies not yet scanned.
+
+### Fault semantics & cancellation
+
+- **A faulty handler/action does not hide the original exception.** If a handler or action itself throws, that fault propagates unwrapped (stack preserved) with the original request exception attached to it under `Exception.Data["FastMediatR.OriginalException"]` — so neither failure is lost.
+- **Handlers observe the request's token — which may already be cancelled.** The most common failure reaching this path is a cancellation, so a handler that observes the token may itself abort. Observe it only when abandoning recovery work is the intent.
+- **Actions always complete.** Actions are invoked with a non-cancellable token (`CancellationToken.None`) instead of the request token, guaranteeing logging/metrics side-effects run even when the observed failure is itself the request's cancellation.
+- **Cancellation is suppressible like any other exception.** A handler broad enough to match `OperationCanceledException` — e.g. one registered for `Exception` — can call `SetHandled` and turn a cancellation into a normal-looking response. FastMediatR deliberately mirrors MediatR and does not special-case cancellation. To let cancellation propagate, do not register suppressing handlers broad enough to match it.
+
+### Pipeline placement
+
+The two exception behaviors are registered **after** your `AddOpenBehavior` registrations (so your behaviors stay outermost) but **before** the pre/post-processor behaviors (so they catch exceptions thrown by the handler *and* the pre/post-processors). With the default `ApplyForUnhandledExceptions` strategy the order is:
+
+```
+LoggingBehavior                       (outermost — your behaviors)
+  PerformanceBehavior
+    ValidationBehavior
+      RequestExceptionActionProcessorBehavior   ← runs actions when unhandled
+        RequestExceptionProcessorBehavior       ← handlers can suppress here
+          RequestPreProcessorBehavior
+            ← handler runs here →
+          RequestPostProcessorBehavior
+/...
+```
+
+Under `ApplyForAllExceptions` the action and processor behaviors swap places so actions always run.
+
+> See [`samples/FastMediatR.Sample.Api`](../samples/FastMediatR.Sample.Api) — the `POST /payments` endpoint (`ProcessPaymentCommand`) demonstrates a handler that throws `PaymentDeclinedException`, an exception handler that converts it to a graceful result, and an exception action that logs the decline. The sample sets `ApplyForAllExceptions` so the action still runs although the handler suppresses the exception — with the default strategy it would never fire for declines.
+
+---
+
+## 9. Notification Publishing Strategies
 
 FastMediatR ships two `INotificationPublisher` implementations that control how `IPublisher.Publish` fans out to multiple `INotificationHandler<TNotification>` subscribers.
 
@@ -560,7 +667,7 @@ Register it before `AddFastMediatR` (see "Replacing the publisher entirely" abov
 
 
 
-## 9. Source-Generator Diagnostics
+## 10. Source-Generator Diagnostics
 
 The FastMediatR source generator validates handler wiring at **compile time** and emits the following diagnostics.
 
@@ -646,7 +753,7 @@ All of the snippets above are taken from [`samples/FastMediatR.Sample.Api/Progra
 
 ---
 
-## 10. Configuration & Options
+## 11. Configuration & Options
 
 `FastMediatROptions` is the runtime configuration record for FastMediatR. It is bound automatically by `AddFastMediatR<TMarker>()` from the `"FastMediatR"` section of your `appsettings.json`.
 
@@ -711,7 +818,7 @@ The section name is available as a constant for configuration binding in your ow
 
 ---
 
-## 11. Observability
+## 12. Observability
 
 `FastMediatR.Telemetry` adds an `ActivitySource("FastMediatR")`-based tracing behavior for `Send` calls.
 
@@ -761,7 +868,7 @@ Notifications published via `IPublisher.Publish` do not flow through `IPipelineB
 
 ---
 
-## 12. AOT & Trimming Guidance
+## 13. AOT & Trimming Guidance
 
 FastMediatR is `IsAotCompatible=true` and `IsTrimmable=true`. The source generator eliminates all runtime reflection from the hot path. The only reflection touchpoint is the one-time startup lookup of the generated registration class, annotated with `[DynamicDependency]` to preserve it through trimming.
 
@@ -825,7 +932,7 @@ The `tests/FastMediatR.Aot.SmokeTest` project is published with `PublishAot=true
 
 ---
 
-## 13. Migration from MediatR
+## 14. Migration from MediatR
 
 FastMediatR is a drop-in replacement for MediatR. The public interface surface (`IRequest<TResponse>`, `IRequestHandler<TRequest, TResponse>`, `INotification`, `INotificationHandler<TNotification>`, `ISender`, `IPublisher`, `IMediator`, `IPipelineBehavior<,>`) is identical by design.
 
@@ -919,18 +1026,18 @@ That is the entire migration. All call sites using `ISender.Send(...)`, `IPublis
 
 ---
 
-## 14. Troubleshooting & FAQ
+## 15. Troubleshooting & FAQ
 
 _(Coming in Phase 8.)_
 
 ---
 
-## 15. Performance Characteristics
+## 16. Performance Characteristics
 
 _(Coming in Phase 7. See [`docs/benchmarks/`](benchmarks/) for raw results.)_
 
 ---
 
-## 16. Document Status
+## 17. Document Status
 
 This guide is published as part of the FastMediatR repository and is updated at the close of every implementation phase per the task breakdown. The **U** (usage guide) closing gate in [260524_1230-fastmediatr-task-breakdown.md](260524_1230-fastmediatr-task-breakdown.md) is what keeps this document honest.

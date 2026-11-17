@@ -7,6 +7,35 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added — Exception Handling Pipeline
+
+- **`FastMediatR.Core`** — new exception-handling abstractions (AOT-clean, abstractions only):
+  - `IRequestExceptionHandler<TRequest, TResponse, TException>` — handles an exception thrown by the pipeline and can supply a fallback response via `RequestExceptionHandlerState<TResponse>.SetHandled(...)`, suppressing the exception. Matches the MediatR signature.
+  - `IRequestExceptionAction<TRequest, TException>` — side-effect-only observer that runs when a request fails but **cannot** suppress the exception (e.g. logging, metrics).
+  - `RequestExceptionHandlerState<TResponse>` (sealed) — carries the `Handled` flag and `Response`; `SetHandled(response)` marks the exception handled.
+  - `RequestExceptionActionProcessorStrategy` enum — `ApplyForUnhandledExceptions` (default) / `ApplyForAllExceptions`.
+- **`FastMediatR.Extensions.DI`** — two auto-registered pipeline behaviors plus wiring:
+  - `RequestExceptionProcessorBehavior<TRequest, TResponse>` — catches exceptions, offers them to every matching `IRequestExceptionHandler`, and returns the fallback response when one suppresses the exception; otherwise rethrows preserving the stack trace.
+  - `RequestExceptionActionProcessorBehavior<TRequest, TResponse>` — runs every matching `IRequestExceptionAction`, then rethrows.
+  - Exception/action matching walks the thrown exception's type hierarchy (most-derived first); the first handler to call `SetHandled` wins, while **all** matching actions run.
+  - `AssemblyScanner` now discovers `IRequestExceptionHandler<,,>` and `IRequestExceptionAction<,>` implementations and registers them as closed-interface mappings.
+  - `AddFastMediatR` auto-registers the two behaviors **between** user `AddOpenBehavior` registrations and the pre/post-processor behaviors (so they wrap the handler and pre/post-processors). Their relative order is governed by `FastMediatRConfig.RequestExceptionActionProcessorStrategy`.
+  - The behaviors live in `FastMediatR.Extensions.DI` and use reflection (`MakeGenericType` + DI lookup) only on the exception path; this is confined to the already reflection-based `AddFastMediatR` opt-in path, keeping `FastMediatR.Core` AOT-clean.
+  - When an exception handler or action itself throws, that fault propagates unwrapped and the original request exception is attached to it under `Exception.Data["FastMediatR.OriginalException"]`, so neither failure is lost.
+  - Exception **actions** are invoked with a non-cancellable token (`CancellationToken.None`) rather than the request token — the observed failure is often a cancellation, and action telemetry must still complete. Exception **handlers** still observe the request token (which may already be cancelled).
+  - Built-in pipeline behaviors (exception, pre- and post-processor) are registered idempotently (`TryAddEnumerable`): repeated `AddFastMediatR` calls no longer stack duplicate behaviors, which previously would have run exception actions twice per failure.
+  - `AddFastMediatR` now scans each assembly into a service collection **at most once**: the common `AddFastMediatR<TMarker>()` + `RegisterHandlersFromAssemblyContaining<TMarker>()` pattern scanned the same assembly twice, double-registering every handler, action and pre/post-processor (exception actions fired twice per failure once actions actually ran).
+  - Exception-path reflection caches the closed handler/action interface types (keyed by request/response/exception), so `MakeGenericType` does not re-run per failure occurrence; invocation stays a single cached-`MethodInfo.Invoke` — a deliberate cold-path simplicity choice, documented in code.
+- **`samples/FastMediatR.Sample.Api`** — new exception-handling use case: `ProcessPaymentCommand` (handler throws `PaymentDeclinedException` over the credit limit, with a culture-invariant decline message because the text becomes the HTTP response body), `PaymentDeclinedExceptionHandler` (translates it to a graceful `ProcessPaymentResult`), and `PaymentDeclinedExceptionAction` (logs the decline). Exposed via `POST /payments`. The sample configures `ApplyForAllExceptions` — under the default `ApplyForUnhandledExceptions` strategy the suppressing handler would prevent the decline action from ever running, making the demo silently inert.
+- **`tests/FastMediatR.Tests`** — 31 new tests:
+  - `RequestExceptionProcessorBehaviorTests` — pass-through on success, suppression → fallback, rethrow when no/unhandled handler, base-type hierarchy matching, first-suppressing-handler-wins, original exception propagates unwrapped when a handler throws synchronously, original attached to fault `Data` when a handler faults, handler fault with an unwritable `Data` still propagates the fault (best-effort attach), handler rethrowing the same exception instance is not self-attached, asynchronously faulting handler propagates unwrapped and carries the original, handlers observe the request token even when already cancelled (asymmetric with actions by design), catch-all handler registered for `Exception`, value-type `SetHandled(default)`, null guards.
+  - `RequestExceptionActionProcessorBehaviorTests` — no actions on success, action runs + rethrows, all matching actions across hierarchy run, actions run with a non-cancellable token even after request cancellation, original attached to fault `Data` when an action faults, null guards.
+  - `ExceptionBehaviorRegistrationTests` — default vs. `ApplyForAllExceptions` ordering, placement between user behaviors and pre/post-processor behaviors, idempotent registration across repeated `AddFastMediatR` calls, and closed-mapping dedupe when the same assembly is scanned repeatedly.
+  - `ExceptionPipelineStrategyTests` — runtime strategy semantics through the real `AddFastMediatR` pipeline (descriptor order → DI → behavior chain, not hand-wired): default-strategy suppression skips actions, unhandled exceptions run actions and rethrow the original instance, `ApplyForAllExceptions` runs actions even when a handler suppresses.
+- **`tests/FastMediatR.Integration.Tests`** — 3 new tests: `PaymentsEndpointTests` exercises `POST /payments` under, exactly-at and over the credit limit (boundary amount is approved — only strictly over-limit payments decline); the over-limit case proves both pipeline halves through HTTP — a graceful `200` with `approved: false` and the **exact** currency-qualified decline message (handler) and the decline logged as a warning by `PaymentDeclinedExceptionAction` (action, via a recording `ILoggerProvider`).
+- Documentation: usage guide §8 "Exception Handling Pipeline" added (subsequent sections renumbered); feature-gap roadmap item #2 marked implemented.
+- Test count: **172 / 172** passing (123 core/behavior, 12 generator, 20 integration, 6 architecture, 11 telemetry).
+
 ### Changed
 
 - Migrated the canonical repository solution file from `FastMediatR.sln` to `FastMediatR.slnx` using the .NET 10 solution format. CI, README build/test commands, and design/task-breakdown documentation now target `FastMediatR.slnx`.

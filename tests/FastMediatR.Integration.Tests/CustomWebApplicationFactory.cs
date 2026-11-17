@@ -7,8 +7,10 @@ namespace FastMediatR.Integration.Tests;
 /// <summary>
 /// Custom <see cref="WebApplicationFactory{TEntryPoint}"/> that overrides the hosting environment
 /// and configuration so the tests run in isolation from any developer machine settings.
+/// Derived types (e.g. <see cref="PaymentsWebApplicationFactory"/>) layer per-fixture services on top
+/// of these defaults via <c>base.ConfigureWebHost(builder)</c> — keep shared overrides here, in one place.
 /// </summary>
-public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
+public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     /// <summary>
     /// Configures the web host for integration testing:

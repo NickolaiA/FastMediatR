@@ -52,7 +52,10 @@ jobs:
 
       - name: Pack
         if: matrix.os == 'ubuntu-latest'
-        run: dotnet pack FastMediatR.slnx --configuration Release --no-build --output ./artifacts
+        # No --no-build: the FastMediatR metapackage's bundling targets resolve project
+        # references, which under NoBuild invokes Build on them and fails NETSDK1085.
+        # Pack is incremental right after the Build step above, so this costs ~nothing.
+        run: dotnet pack FastMediatR.slnx --configuration Release --output ./artifacts
 
       - name: Upload packages
         if: matrix.os == 'ubuntu-latest'

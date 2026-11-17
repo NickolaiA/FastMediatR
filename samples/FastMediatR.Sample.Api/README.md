@@ -8,7 +8,7 @@ This project is updated at the end of every implementation phase. See [docs/2605
 
 | Folder            | Demonstrates                                                          |
 |-------------------|-----------------------------------------------------------------------|
-| `Commands/`       | `IRequest<TResponse>` (`CreateUserCommand`) and `IRequest` → `Unit` (`DeactivateUserCommand`) |
+| `Commands/`       | `IRequest<TResponse>` (`CreateUserCommand`), `IRequest` → `Unit` (`DeactivateUserCommand`), and the exception-handling pipeline (`ProcessPaymentCommand` + `PaymentDeclinedExceptionHandler`/`PaymentDeclinedExceptionAction`) |
 | `Queries/`        | `IRequest<TResponse>` used as a read-only query (`GetUserByIdQuery`)  |
 | `Notifications/`  | `INotification` with multiple handlers (`UserCreatedNotification`)    |
 | `Program.cs`      | DI wiring, built-in behaviors, exception handling, OpenTelemetry tracing, and the `/telemetry/demo` endpoint |
@@ -23,13 +23,18 @@ dotnet run --project samples/FastMediatR.Sample.Api
 curl http://localhost:5100/health
 ```
 
+> **Expected log noise.** The invalid `POST /users` demos in `FastMediatR.Sample.Api.http`
+> deliberately throw `ValidationException`, so the console prints ERROR-level stack traces for
+> them — the 400 problem+json response is the correct outcome, not a pipeline bug.
+
 ## Layout
 
 ```
 samples/FastMediatR.Sample.Api/
 ├── Commands/
 │   ├── CreateUserCommand.cs
-│   └── DeactivateUserCommand.cs
+│   ├── DeactivateUserCommand.cs
+│   └── ProcessPaymentCommand.cs
 ├── Queries/
 │   └── GetUserByIdQuery.cs
 ├── Notifications/

@@ -23,6 +23,14 @@
     <EnableAotAnalyzer>true</EnableAotAnalyzer>
     <!-- Publish settings for the CI gate. -->
     <PublishAot>true</PublishAot>
+    <!--
+      Pin the runtime pack / ILCompiler to a patched version.
+      The installed SDK (10.0.100) would otherwise restore Microsoft.DotNet.ILCompiler 10.0.0,
+      which has CVE-2026-111497 (GHSA-p3jp-9v83-76w9, Brotli decoder OOB write; fixed in 10.0.14).
+      Remove this once the CI/local SDK includes runtime >= 10.0.14 — tracked as a removal
+      trigger in docs/260530_1200-fastmediatr-feature-gap-roadmap.md (§ Maintenance & housekeeping).
+    -->
+    <RuntimeFrameworkVersion>10.0.15</RuntimeFrameworkVersion>
     <TrimmerRootAssembly>FastMediatR.Aot.SmokeTest</TrimmerRootAssembly>
     <RootNamespace>FastMediatR.Aot.SmokeTest</RootNamespace>
     <!-- Write generator output to disk so it can be inspected. -->

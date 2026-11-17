@@ -15,6 +15,7 @@ FastMediatR uses a Roslyn `IIncrementalGenerator` to emit zero-reflection dispat
 - **Near drop-in for MediatR** — `IRequest<T>`, `IRequestHandler<,>`, `INotification`, `INotificationHandler<>`, `ISender`, `IPublisher`, `IMediator`, and `IPipelineBehavior<,>` mirror the MediatR surface (see the migration guide).
 - **Build-time wiring validation** — diagnostics `FM001` (no handler) and `FM002` (duplicate handler) fail the build before you run; `FM003` flags non-default handler lifetimes.
 - **Built-in pipeline behaviors** — `ValidationBehavior` (FluentValidation), `LoggingBehavior`, and `PerformanceBehavior`, plus pre-/post-processors.
+- **Exception handling pipeline** — `IRequestExceptionHandler<,,>` (translate exceptions to fallback responses) and `IRequestExceptionAction<,>` (side-effect-only observers), with type-hierarchy matching and a configurable action strategy.
 - **Configurable notification publishing** — `TaskWhenAllPublisher` (default, concurrent) and `SequentialAwaitPublisher` (ordered, fail-fast).
 - **Optional OpenTelemetry tracing** via the `FastMediatR.Telemetry` package.
 

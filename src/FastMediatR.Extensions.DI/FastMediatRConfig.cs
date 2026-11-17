@@ -13,6 +13,11 @@ namespace FastMediatR.Extensions.DI;
 /// Instances of this class are created internally by <c>AddFastMediatR</c> and passed to the
 /// caller-supplied delegate. Do not retain a reference to the instance after the delegate returns.
 /// </para>
+/// <para>
+/// All configuration is consumed synchronously while <c>AddFastMediatR</c> executes: setting properties or
+/// calling methods on this builder after that call has returned has no effect (with the exception of
+/// service-descriptor entries already added to the <c>IServiceCollection</c>).
+/// </para>
 /// </remarks>
 public sealed class FastMediatRConfig
 {
@@ -27,6 +32,12 @@ public sealed class FastMediatRConfig
     /// <see cref="HandlerLifetimeAttribute"/>.
     /// </summary>
     /// <value>Defaults to <see cref="ServiceLifetime.Scoped"/>.</value>
+    /// <remarks>
+    /// The value is consumed while assemblies are scanned. When <c>AddFastMediatR</c> is called more than
+    /// once on the same service collection, each assembly is scanned only by the <strong>first</strong> call
+    /// that reaches it, so that call's <see cref="DefaultHandlerLifetime"/> applies to it; a later call's
+    /// value affects only assemblies that have not been scanned yet.
+    /// </remarks>
     public ServiceLifetime DefaultHandlerLifetime { get; set; } = ServiceLifetime.Scoped;
 
     /// <summary>
@@ -44,6 +55,23 @@ public sealed class FastMediatRConfig
     /// </remarks>
     public NotificationPublisherStrategy NotificationPublisherStrategy { get; set; } =
         NotificationPublisherStrategy.ParallelWhenAll;
+
+    /// <summary>
+    /// Gets or sets when <see cref="IRequestExceptionAction{TRequest,TException}"/> instances run
+    /// relative to <see cref="IRequestExceptionHandler{TRequest,TResponse,TException}"/> processing.
+    /// </summary>
+    /// <value>Defaults to <see cref="RequestExceptionActionProcessorStrategy.ApplyForUnhandledExceptions"/>.</value>
+    /// <remarks>
+    /// Must be set <em>inside</em> the <c>configure</c> delegate passed to
+    /// <see cref="ServiceCollectionExtensions.AddFastMediatR{TMarker}(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{FastMediatRConfig}?)"/>:
+    /// the value is read once during registration because it determines the order in which the exception
+    /// behaviors are registered. Changing this property after <c>AddFastMediatR</c> has run has no effect.
+    /// When <c>AddFastMediatR</c> is called more than once on the same service collection (e.g. an app
+    /// plus a shared library, each with its own marker), the <strong>first</strong> call's strategy wins —
+    /// the built-in behaviors are registered idempotently, so later calls cannot re-nest them.
+    /// </remarks>
+    public RequestExceptionActionProcessorStrategy RequestExceptionActionProcessorStrategy { get; set; } =
+        RequestExceptionActionProcessorStrategy.ApplyForUnhandledExceptions;
 
     /// <summary>
     /// Gets the additional assemblies that the <see cref="AssemblyScanner"/> will scan for

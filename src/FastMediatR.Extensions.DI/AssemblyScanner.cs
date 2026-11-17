@@ -18,6 +18,8 @@ namespace FastMediatR.Extensions.DI;
 ///   <item><see cref="INotificationHandler{TNotification}"/></item>
 ///   <item><see cref="IRequestPreProcessor{TRequest}"/></item>
 ///   <item><see cref="IRequestPostProcessor{TRequest,TResponse}"/></item>
+///   <item><see cref="IRequestExceptionHandler{TRequest,TResponse,TException}"/></item>
+///   <item><see cref="IRequestExceptionAction{TRequest,TException}"/></item>
 /// </list>
 /// </para>
 /// <para>
@@ -26,10 +28,13 @@ namespace FastMediatR.Extensions.DI;
 /// using the lifetime determined by <see cref="GetEffectiveLifetime"/>.
 /// </para>
 /// <para>
-/// <strong>Pre / post processor registration</strong> — in addition to the concrete-type registration,
-/// each implemented processor interface is registered as a named mapping (via <c>Add</c>, not <c>TryAdd</c>)
-/// so that <c>IEnumerable&lt;IRequestPreProcessor&lt;T&gt;&gt;</c> resolves all processors in DI
-/// registration order. This is required by the pipeline behaviors introduced in Phase 4.
+/// <strong>Closed-interface mapping registration</strong> — in addition to the concrete-type registration,
+/// each implemented <see cref="IRequestPreProcessor{TRequest}"/>, <see cref="IRequestPostProcessor{TRequest,TResponse}"/>,
+/// <see cref="IRequestExceptionHandler{TRequest,TResponse,TException}"/> or
+/// <see cref="IRequestExceptionAction{TRequest,TException}"/> interface is registered as a closed mapping
+/// (via <c>Add</c>, not <c>TryAdd</c>) so the pipeline behaviors resolve <em>all</em> matching
+/// implementations in DI registration order. Execution order therefore follows assembly scan order,
+/// which is unspecified across assemblies — do not depend on cross-assembly relative order.
 /// </para>
 /// <para>
 /// Handler types decorated with <see cref="HandlerLifetimeAttribute"/> override the
@@ -52,6 +57,25 @@ internal static class AssemblyScanner
 
     /// <summary>Open-generic form of <see cref="IRequestPostProcessor{TRequest,TResponse}"/>.</summary>
     private static readonly Type _postProcessorOpen = typeof(IRequestPostProcessor<,>);
+
+    /// <summary>Open-generic form of <see cref="IRequestExceptionHandler{TRequest,TResponse,TException}"/>.</summary>
+    private static readonly Type _exceptionHandlerOpen = typeof(IRequestExceptionHandler<,,>);
+
+    /// <summary>Open-generic form of <see cref="IRequestExceptionAction{TRequest,TException}"/>.</summary>
+    private static readonly Type _exceptionActionOpen = typeof(IRequestExceptionAction<,>);
+
+    /// <summary>
+    /// The open-generic interfaces whose closed implementations get an <em>additional</em> closed-interface
+    /// mapping registration (pre/post-processors and exception handlers/actions). One set drives one shared
+    /// registration branch, so the four shapes can never drift apart.
+    /// </summary>
+    private static readonly HashSet<Type> _closedMappingOpenGenerics =
+    [
+        _preProcessorOpen,
+        _postProcessorOpen,
+        _exceptionHandlerOpen,
+        _exceptionActionOpen,
+    ];
 
     /// <summary>
     /// Scans <paramref name="assembly"/> and registers all discovered handler and processor types
@@ -95,7 +119,7 @@ internal static class AssemblyScanner
                         concreteRegistered = true;
                     }
                 }
-                else if (openGeneric == _preProcessorOpen || openGeneric == _postProcessorOpen)
+                else if (_closedMappingOpenGenerics.Contains(openGeneric))
                 {
                     if (!concreteRegistered)
                     {
@@ -103,9 +127,12 @@ internal static class AssemblyScanner
                         concreteRegistered = true;
                     }
 
-                    // Register the closed interface so IEnumerable<IRequestPreProcessor<T>> resolves all
-                    // processors in registration order (required by Phase 4 pipeline behaviors).
-                    // Use Add (not TryAdd) to allow multiple processors for the same request type.
+                    // Register the closed interface in addition to the concrete type so the pipeline
+                    // behaviors resolve every matching implementation in registration order:
+                    // IEnumerable<IRequestPreProcessor<T>> / IEnumerable<IRequestPostProcessor<T,TResponse>>
+                    // for the pre/post-processor behaviors, and GetServices(closed
+                    // IRequestExceptionHandler<,,> / IRequestExceptionAction<,>) for the exception behaviors.
+                    // Use Add (not TryAdd) to allow multiple implementations per closed interface.
                     Type concreteType = type;
                     services.Add(ServiceDescriptor.Describe(iface, sp => sp.GetRequiredService(concreteType), lifetime));
                 }
