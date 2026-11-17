@@ -41,7 +41,7 @@
   <!-- Repository metadata for any project that does set IsPackable=true (design §14.1) -->
   <PropertyGroup>
     <!-- Single source of truth for the NuGet package version (FastMediatR + FastMediatR.Telemetry). -->
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>FastMediatR contributors</Authors>
     <Company>FastMediatR</Company>
     <Product>FastMediatR</Product>
